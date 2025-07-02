@@ -1,21 +1,20 @@
 ﻿{
   "Config": {
-    "isHeadless": true,
+    "isHeadless": false,
     "isInPrivate": true,
     "isAutomationHidden": true,
-    "userAgent": "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+    //"userAgent": "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
     "browserSize": "--window-size=1920,1080"
   },
-  "Action" : {
-    "Change": [],
-    "Logon": [],
-    "PreReconcile ": [
+  "Actions" : {
+    "action_1": [],
+    "action_2": [],
+    "action_3": [
       {"step":  1, "action": "WaitUntil", "select": "ByName", "selectValue": "q", "waitTime":  10, "condition": "IsElementExist"},
       {"step":  2, "action": "WhileLoop", "select": "ByName", "selectValue": "q", "condition": "IsTextAreaTextNotContain", "conditionPara": "1"},
-      {"step": 3, "action": "FindElement", "select":  "ByName", "selectValue": "q", "method": "SendKeys" ,"methodPara": "1"},
+        {"step": 3, "action": "FindElement", "select":  "ByName", "selectValue": "q", "method": "SendKeys" ,"methodPara": "1"},
       {"step":  4, "action": "EndWhileLoop"},
       {"step": 5, "action": "FindElement", "select":  "ByName", "selectValue": "q", "method": "SendKeys" ,"methodPara": "Succesfull break out the while loop"},
       {"step": 99, "action": "WaitUntil", "condition": "BySecond", "waitTime":  6}]
   }
 }
-

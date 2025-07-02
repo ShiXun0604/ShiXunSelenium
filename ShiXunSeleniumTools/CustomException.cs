@@ -8,6 +8,7 @@ namespace ShiXunSeleniumTools
 {
     public enum ErrorType
     {
+        ScriptActionNotFound,
         InvalidActionValue,
         InvalidConditionValue,
         InvalidMethodValue,
@@ -35,7 +36,21 @@ namespace ShiXunSeleniumTools
             this.errorPrompt = errorPrompt;
         }
     }
-    #region 81XX
+    /// <summary>
+    /// Json file中action欄位的值不正確時拋出
+    /// </summary>
+    public class ScriptActionNotFoundException : ShiXunSeleniumException
+    {
+        public override ErrorType ErrorType => ErrorType.ScriptActionNotFound;
+        public ScriptActionNotFoundException(string errorPrompt) : base(errorPrompt)
+        {
+
+        }
+        public ScriptActionNotFoundException(string errorPrompt, Exception innerException) : base(errorPrompt, innerException)
+        {
+
+        }
+    }
     /// <summary>
     /// Json file中action欄位的值不正確時拋出
     /// </summary>
@@ -126,9 +141,7 @@ namespace ShiXunSeleniumTools
            
         }
     }
-    #endregion
 
-    #region 82XX
     /// <summary>
     /// 當Json file不存在時拋出
     /// </summary>
@@ -220,9 +233,7 @@ namespace ShiXunSeleniumTools
             
         }
     }
-    #endregion
 
-    #region 83XX
     public class ElementNotSatifyConditionException : ShiXunSeleniumException
     {
         public override ErrorType ErrorType => ErrorType.ElementNotSatifyCondition;
@@ -231,5 +242,4 @@ namespace ShiXunSeleniumTools
 
         }
     }
-    #endregion
 }

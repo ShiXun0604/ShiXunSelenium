@@ -4,27 +4,31 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Security.Policy;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace ShiXunSeleniumTools
 {
     /// <summary>
-    /// 這個是對外開放的interface,用來管理Selenium相關的操作
+    /// 這個是對外開放的interface class,用來管理Selenium相關的操作
     /// </summary>
-    public abstract class ShiXunSeleniumManager
+    public class ShiXunSeleniumManager
     {
-        public string JsonFilePath { get; set; } = "";  // Json檔案路徑
+        public string jsonFilePath { get; set; } = "";  // Json檔案路徑
+        public bool isDebug { get; set; } = false;  // 是否開啟debug模式
         internal Dictionary<string, string> variableDict { get; set; } = new Dictionary<string, string>();  // 用來儲存變數的字典
-        public abstract Dictionary<ErrorType, int> errorCodeDict { get; set; }
+        //public abstract Dictionary<ErrorType, int> errorCodeDict { get; set; }
 
         // Selenium物件
         private EdgeOptions options;
         public EdgeDriver driver;
 
         // Json讀進來的資料
-        private List<StepCommand> StepsList;
+        private JsonModel jsonModel;
         private SeleniumSetting seleniumSetting;
+        private Dictionary<string, List<StepCommand>> actions;
+        private List<StepCommand> StepsList;        
 
         // program counter
         internal int PC;
@@ -40,27 +44,36 @@ namespace ShiXunSeleniumTools
         public ShiXunSeleniumManager() { }
         public void LoadJsonStepsFile(string jsonFilePath)
         {
-            this.JsonFilePath = jsonFilePath;
+            this.jsonFilePath = jsonFilePath;
             // 讀取全部字串
             string jsonContent = null;
 
             // 重寫FileNotFoundException錯誤訊息
             AOP.ExecuteWithRewriteException(() => {
-                jsonContent = File.ReadAllText(this.JsonFilePath);
+                jsonContent = File.ReadAllText(this.jsonFilePath);
             },
             catchType: typeof(FileNotFoundException),
-            throwType: typeof(JsonFileNotFoundException), errorPrompt: $"File \"{this.JsonFilePath}\" can not found, please check your settings on PVWA.");
+            throwType: typeof(JsonFileNotFoundException), errorPrompt: $"File \"{this.jsonFilePath}\" can not found, please check your settings on PVWA.");
 
             // 反序列化(By ChatGPT)
-            var settings = new JsonSerializerSettings
+            JsonSerializerSettings settings = new JsonSerializerSettings
             {
                 Converters = new List<JsonConverter> { new StepCommandConverter() }
             };
-            JsonModel jsonStepsObject = JsonConvert.DeserializeObject<JsonModel>(jsonContent, settings);
+            this.jsonModel = JsonConvert.DeserializeObject<JsonModel>(jsonContent, settings);
+            this.seleniumSetting = this.jsonModel.Config;
+            this.actions = this.jsonModel.Actions;
 
+            // 設定Selenium參數
+            this.SeleniumConfigure();
 
+            // 執行Json檔案的合法性檢查
+            if (this.isDebug)
+                this.StepLogicStatementCheck();
+        }
+        private void SeleniumConfigure()
+        {
             // 設定senenium參數
-            this.seleniumSetting = jsonStepsObject.Config;
             this.options = new EdgeOptions();
             this.options.AddArgument("--window-size=1920,1080");
             // 無頭模式
@@ -78,6 +91,15 @@ namespace ShiXunSeleniumTools
                 this.options.AddArgument(this.seleniumSetting.userAgent);
         }
         private void StepLogicStatementCheck()
+        {
+            foreach (string key in this.actions.Keys)
+            {
+                this.StepsList = this.actions[key];
+                this.OneStepLogicStatementCheck();
+            }
+            this.StepsList = null;
+        }
+        private void OneStepLogicStatementCheck()
         {
             // 執行邏輯判斷式(if、while、for)的合法性檢查演算法
             this.logicOpsStack = new Stack<LogicOps>();
@@ -171,8 +193,43 @@ namespace ShiXunSeleniumTools
 
             return;
         }
-    
-        
-    
+        public void Running(string iniUrl, string executeActionName)
+        {
+            Console.WriteLine(JsonConvert.SerializeObject(this.actions));
+            if (this.actions.TryGetValue(executeActionName, out var steps))            
+                this.StepsList = steps;            
+            else            
+                throw new ScriptActionNotFoundException($"Action '{executeActionName}' not found in action list.");
+            if (string.IsNullOrEmpty(this.jsonFilePath))
+                throw new JsonFileNotFoundException("Json file path is not set, please call LoadJsonStepsFile() first.");
+
+            // 開啟瀏覽器,瀏覽指定URL
+            this.driver = new EdgeDriver(this.options);
+            this.driver.Navigate().GoToUrl(iniUrl);
+
+            // 一步一步執行動作
+            this.PC = 0;
+            this.stepCount = 0;
+            while (this.PC < this.StepsList.Count)
+            {
+                this.StepsList[this.PC].Execute(this);
+
+                if (this.isDebug)
+                {
+                    Console.WriteLine($"完成執行第{this.PC + 1}步驟 {this.StepsList[this.PC].action}");
+                    Console.WriteLine($"執行的步驟內容: {JsonConvert.SerializeObject(this.logicOpsStack)}");
+                    Console.WriteLine($"------");
+                }
+
+                // 如果執行的步驟數量超過最大值則報錯
+                this.PC += 1;
+                this.stepCount += 1;
+                if (this.stepCount > maxStepCount)
+                    throw new ExceedMaximumExecuteStepCountException($"The number of steps exceeds the maximum value of {this.maxStepCount}, please check your json file to avoid infinite loop");
+            }
+
+            if(this.isDebug)
+                Console.WriteLine("所有步驟執行完畢");
+        }
     }
 }

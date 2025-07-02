@@ -11,11 +11,7 @@ namespace ShiXunSeleniumTools
     internal class JsonModel
     {
         public SeleniumSetting Config { get; set; }
-        public List<StepCommand> Verify { get; set; }
-        public List<StepCommand> Logon { get; set; }
-        public List<StepCommand> Change { get; set; }
-        public List<StepCommand> PreReconcile { get; set; }
-        public List<StepCommand> Reconcile { get; set; }
+        public Dictionary<string, List<StepCommand>> Actions { get; set; }
     }
     public class SeleniumSetting
     {
@@ -55,7 +51,6 @@ namespace ShiXunSeleniumTools
     /// </summary>
     public class WhileLoopStatement : LogicOps
     {
-
         public WhileLoopStatement(int startIndex)
         {
             this.startIndex = startIndex;

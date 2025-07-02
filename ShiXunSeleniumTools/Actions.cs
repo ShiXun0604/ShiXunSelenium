@@ -84,7 +84,8 @@ namespace ShiXunSeleniumTools
                 By selector = this.SelectorSetting(replacedSelectValue);
 
                 // 重寫WebDriverTimeoutException錯誤訊息
-                AOP.ExecuteWithRewriteException(() => {
+                AOP.ExecuteWithRewriteException(() => 
+                {
                     switch (this.condition)
                     {
                         case "IsElementExist":

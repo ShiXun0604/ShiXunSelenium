@@ -80,9 +80,18 @@ namespace ShiXunSeleniumTools
                 case "EndWhileLoop":
                     instance = new EndWhileLoop();
                     break;
+                case "ProgrammingPause":
+                    instance = new ProgrammingPause();
+                    break;
+                case "AddNewTabPage":
+                    instance = new AddNewTabPage();
+                    break;
+                case "SwitchToTabPage":
+                    instance = new SwitchToTabPage();
+                    break;
                 case "TakeScreenshot":
                     instance = new TakeScreenshot();
-                    break;
+                    break;                
                 default:
                     throw new InvalidActionValueException($"Unknown action type: \"{action}\", please check your json file");
             }

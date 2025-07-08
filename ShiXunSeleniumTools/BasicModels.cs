@@ -20,6 +20,7 @@ namespace ShiXunSeleniumTools
         public bool isAutomationHidden { get; set; }
         public string userAgent { get; set; }
         public string browserSize { get; set; }
+        public string userProfilePath { get; set; }
     }
     #endregion JsonRelated
     public class LogicOps
@@ -55,5 +56,14 @@ namespace ShiXunSeleniumTools
         {
             this.startIndex = startIndex;
         }
+    }
+    public enum LogLevel
+    {
+        DEBUG,
+        INFO,
+        WARNING,
+        ERROR,
+        CRITICAL,
+        NULL,
     }
 }

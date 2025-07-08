@@ -5,7 +5,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Forms;
 
 namespace ShiXunSeleniumTools
 {
@@ -27,9 +29,25 @@ namespace ShiXunSeleniumTools
             // 用regular expression替換變數
             data = Regex.Replace(data, @"\$\{(.*?)\}", match =>
             {
-                var key = match.Groups[1].Value;
+                string key = match.Groups[1].Value;
                 if (variableDict.TryGetValue(key, out var value))
                     return value ?? "";
+                else if (key == "clipboardContent")
+                {
+                    string text = null;
+                    Thread staThread = new Thread(() =>
+                    {
+                        if (Clipboard.ContainsText())
+                        {
+                            text = Clipboard.GetText();
+                        }
+                    });
+                    staThread.SetApartmentState(ApartmentState.STA);
+                    staThread.Start();
+                    staThread.Join();
+                    Console.WriteLine($"Clipboard content: {text}");
+                    return text;
+                }
                 else
                     return match.Value;
             });

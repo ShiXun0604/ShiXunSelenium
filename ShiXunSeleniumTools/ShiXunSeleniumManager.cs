@@ -7,17 +7,18 @@ using System.Linq;
 using System.Security.Policy;
 using System.Text;
 using System.Threading.Tasks;
+using System.Threading;
 
 namespace ShiXunSeleniumTools
 {
     /// <summary>
     /// 這個是對外開放的interface class,用來管理Selenium相關的操作
     /// </summary>
-    public class ShiXunSeleniumManager
+    public partial class ShiXunSeleniumManager
     {
         public string jsonFilePath { get; set; } = "";  // Json檔案路徑
-        public bool isDebug { get; set; } = false;  // 是否開啟debug模式
-        internal Dictionary<string, string> variableDict { get; set; } = new Dictionary<string, string>();  // 用來儲存變數的字典
+        public bool isDebug { get; set; } = true;  // 是否開啟debug模式
+        public Dictionary<string, string> variableDict { get; set; } = new Dictionary<string, string>();  // 用來儲存變數的字典
         //public abstract Dictionary<ErrorType, int> errorCodeDict { get; set; }
 
         // Selenium物件
@@ -40,10 +41,25 @@ namespace ShiXunSeleniumTools
         // 邏輯指令資訊
         internal List<LogicOps> logicOpsList;  // 在precheck通過時儲存所有邏輯指令的相應index
         internal Stack<LogicOps> logicOpsStack;  // 實際執行時的logic stack
+        internal ManualResetEvent PauseEvent = new ManualResetEvent(true);
 
-        public ShiXunSeleniumManager() { }
+        // log related
+        internal LogLevel logLevel = LogLevel.NULL;
+        internal string logFilePath = null;
+
+        public ShiXunSeleniumManager(string jsonFilePath) 
+        {
+            this.jsonFilePath = jsonFilePath;
+            this.LoadJsonStepsFile(jsonFilePath);
+        }
+        public void PauseContinue()
+        {
+            this.PauseEvent.Set();
+        }
         public void LoadJsonStepsFile(string jsonFilePath)
         {
+            this.Log(LogLevel.DEBUG, $"Loadding json steps file. File path: {jsonFilePath}");
+
             this.jsonFilePath = jsonFilePath;
             // 讀取全部字串
             string jsonContent = null;
@@ -66,29 +82,44 @@ namespace ShiXunSeleniumTools
 
             // 設定Selenium參數
             this.SeleniumConfigure();
-
+            /*
             // 執行Json檔案的合法性檢查
             if (this.isDebug)
                 this.StepLogicStatementCheck();
+            */
         }
         private void SeleniumConfigure()
         {
             // 設定senenium參數
-            this.options = new EdgeOptions();
-            this.options.AddArgument("--window-size=1920,1080");
+            this.options = new EdgeOptions();           
+
             // 無頭模式
-            if (this.seleniumSetting.isHeadless)  // 如果json檔案有設定headless則啟用            
+            if (this.seleniumSetting.isHeadless)          
                 this.options.AddArgument("--headless=new");
-            if (this.seleniumSetting.isInPrivate)  // 啟動無痕模式
+            // 設定無痕模式
+            if (this.seleniumSetting.isInPrivate)  
                 this.options.AddArgument("-inprivate");
-            if (this.seleniumSetting.isAutomationHidden)  // 隱藏自動化痕跡
+            // 隱藏自動化痕跡
+            if (this.seleniumSetting.isAutomationHidden)  
             {
                 this.options.AddArgument("--disable-blink-features=AutomationControlled");
                 this.options.AddExcludedArgument("enable-automation");
                 this.options.AddAdditionalOption("useAutomationExtension", false);
             }
-            if (this.seleniumSetting.userAgent != null)  // 設定userAgent
+            // 設定userAgent
+            if (!String.IsNullOrEmpty(this.seleniumSetting.userAgent))  
                 this.options.AddArgument(this.seleniumSetting.userAgent);
+            // 設定瀏覽器大小
+            if (!String.IsNullOrEmpty(this.seleniumSetting.browserSize))  
+                this.options.AddArgument(this.seleniumSetting.browserSize);
+            else
+                this.options.AddArgument("--start-maximized");
+            // 設定使用者資料路徑
+            if (!String.IsNullOrEmpty(this.seleniumSetting.userProfilePath))  
+                this.options.AddArgument($"--user-data-dir={this.seleniumSetting.userProfilePath}");
+
+
+            this.Log(LogLevel.INFO, "Succesfully load json steps file.");
         }
         private void StepLogicStatementCheck()
         {
@@ -101,6 +132,8 @@ namespace ShiXunSeleniumTools
         }
         private void OneStepLogicStatementCheck()
         {
+            this.Log(LogLevel.DEBUG, $"Start checking logic statements in steps. Will check action \"{this.actions}\"");
+
             // 執行邏輯判斷式(if、while、for)的合法性檢查演算法
             this.logicOpsStack = new Stack<LogicOps>();
             this.logicOpsList = new List<LogicOps>();
@@ -190,21 +223,51 @@ namespace ShiXunSeleniumTools
             // 跑完整個步驟後如果stack還有東西則報錯
             if (this.logicOpsStack.Count != 0)
                 throw new InvalidActionValueException($"You are missing closing element in your json definition, please check your json file");
-
+            this.Log(LogLevel.INFO, $"Logic statements check completed. Found {this.logicOpsList.Count} logic statements in steps.");
             return;
+        }
+        public void LoggerSet(LogLevel logLevel, string logFilePath = null)
+        {
+            this.logLevel = logLevel;
+            this.logFilePath = logFilePath;
+        }
+
+        public async Task RunningAsync(string iniUrl, string executeActionName)
+        { 
+            await Task.Run(() => Running(iniUrl, executeActionName));
         }
         public void Running(string iniUrl, string executeActionName)
         {
-            Console.WriteLine(JsonConvert.SerializeObject(this.actions));
-            if (this.actions.TryGetValue(executeActionName, out var steps))            
-                this.StepsList = steps;            
-            else            
-                throw new ScriptActionNotFoundException($"Action '{executeActionName}' not found in action list.");
+            this.Log(LogLevel.INFO, $"Start running action: {executeActionName} with url: {iniUrl}");
+
+            if (this.actions.TryGetValue(executeActionName, out var steps))
+            {
+                // 載入步驟
+                this.StepsList = steps;
+                // 檢查邏輯判斷式
+                this.OneStepLogicStatementCheck();
+            }
+            else
+            {
+                string errorMsg = $"Action '{executeActionName}' not found in action list.";
+                this.Log(LogLevel.CRITICAL, errorMsg);
+                throw new ScriptActionNotFoundException(errorMsg);
+            }       
+                
             if (string.IsNullOrEmpty(this.jsonFilePath))
-                throw new JsonFileNotFoundException("Json file path is not set, please call LoadJsonStepsFile() first.");
+            {
+                string errorMsg = "Json file path is not set, please call LoadJsonStepsFile() first.";
+                this.Log(LogLevel.CRITICAL, errorMsg);
+                throw new JsonFileNotFoundException(errorMsg);
+            }
+                
+            // 隱藏命令提示字元視窗
+            EdgeDriverService service = EdgeDriverService.CreateDefaultService();
+            if(!this.isDebug)
+                service.HideCommandPromptWindow = true;
 
             // 開啟瀏覽器,瀏覽指定URL
-            this.driver = new EdgeDriver(this.options);
+            this.driver = new EdgeDriver(service, this.options);            
             this.driver.Navigate().GoToUrl(iniUrl);
 
             // 一步一步執行動作
@@ -216,20 +279,24 @@ namespace ShiXunSeleniumTools
 
                 if (this.isDebug)
                 {
-                    Console.WriteLine($"完成執行第{this.PC + 1}步驟 {this.StepsList[this.PC].action}");
-                    Console.WriteLine($"執行的步驟內容: {JsonConvert.SerializeObject(this.logicOpsStack)}");
-                    Console.WriteLine($"------");
+                    this.Log(LogLevel.DEBUG, $"Finish step{this.PC+1}, action: {this.StepsList[this.PC].action}");
                 }
 
                 // 如果執行的步驟數量超過最大值則報錯
                 this.PC += 1;
                 this.stepCount += 1;
                 if (this.stepCount > maxStepCount)
-                    throw new ExceedMaximumExecuteStepCountException($"The number of steps exceeds the maximum value of {this.maxStepCount}, please check your json file to avoid infinite loop");
+                {
+                    string errorMsg = $"The number of steps exceeds the maximum value of {this.maxStepCount}, please check your json file to avoid infinite loop";
+                    this.Log(LogLevel.CRITICAL, errorMsg);
+                    throw new ExceedMaximumExecuteStepCountException(errorMsg);
+                }
             }
 
-            if(this.isDebug)
-                Console.WriteLine("所有步驟執行完畢");
+            this.Log(LogLevel.INFO, "Finish execute scripts. All steps completed.");
+
+            this.driver.Quit();  // 關閉瀏覽器
+            this.driver.Dispose();
         }
     }
 }

@@ -95,6 +95,13 @@ namespace ShiXunSeleniumTools
                                 return element.Displayed ? element : null;
                             });
                             break;
+                        case "IsElementNotExist":
+                            wait.Until(dvr =>
+                            {
+                                var elements = dvr.FindElements(selector);
+                                return elements.Count == 0 || !elements.Any(e => e.Displayed) ? new object() : null;
+                            });
+                            break;
                         case "IsElementToBeClickable":
                             wait.Until(dvr =>
                             {
@@ -670,7 +677,49 @@ namespace ShiXunSeleniumTools
             return;
         }
     }
+    internal class ProgrammingPause : StepCommand
+    {
+        public int waitTime { get; set; } = 10;  // 預設等待10秒鐘
 
+        /// <summary>
+        /// 使用程式控制是否暫停(用在windows Form button click之類的內部程式觸發)
+        /// </summary>
+        public override void Execute(ShiXunSeleniumManager manager)
+        {
+            // 觸發PauseEvent,讓程式暫停
+            manager.PauseEvent.Reset();
+
+            // 等待PauseEvent被觸發
+            bool isTimeout = manager.PauseEvent.WaitOne(this.waitTime * 1000);  
+
+            if (isTimeout)
+            {
+                // 如果超過等待時間則拋出TimeoutException
+                throw new ElementWaitTimeoutException($"In step{this.step}, waiting for pause timed out after {this.waitTime} seconds.");
+            }
+            else
+                return;
+        }
+    }
+
+    internal class AddNewTabPage : StepCommand
+    {
+        public string url { get; set; } = "about:blank";  // 預設開啟一個空白頁面
+        public override void Execute(ShiXunSeleniumManager manager)
+        {
+            ((IJavaScriptExecutor)manager.driver).ExecuteScript($"window.open('{this.url}','_blank');");
+        }
+    }
+    internal class SwitchToTabPage : StepCommand
+    {
+        public int index { get; set; }  // 預設切換到第一個tab頁
+        public override void Execute(ShiXunSeleniumManager manager)
+        {
+            // 切換到指定的tab頁
+            var tabs = manager.driver.WindowHandles;
+            manager.driver.SwitchTo().Window(tabs[this.index]);
+        }
+    }
     #region FOR DEVELOP
     internal class TakeScreenshot : StepCommand
     {

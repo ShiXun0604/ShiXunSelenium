@@ -89,6 +89,12 @@ namespace ShiXunSeleniumTools
                 case "SwitchToTabPage":
                     instance = new SwitchToTabPage();
                     break;
+                case "CloseTabPage":
+                    instance = new CloseTabPage();
+                    break;
+                case "RaiseAlert":
+                    instance = new RaiseAlert();
+                    break;
                 case "TakeScreenshot":
                     instance = new TakeScreenshot();
                     break;                

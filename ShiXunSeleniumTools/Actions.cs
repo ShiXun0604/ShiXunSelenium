@@ -17,7 +17,8 @@ namespace ShiXunSeleniumTools
     {
         public string method { get; set; }
         public string methodPara { get; set; } = "";
-
+        public int retryCount { get; set; } = 0;  // 預設不重試
+        public int retryInterval { get; set; } = 1;  // 預設重試間隔1秒
         /// <summary>
         /// 選定元素並進行動做
         /// </summary>
@@ -40,6 +41,29 @@ namespace ShiXunSeleniumTools
                 case "Click":
                     element.Click();
                     break;
+                case "ClickUntilSuccess":
+                    int currCount = 0;
+                    bool isSuccess = false;
+                    while (currCount <= this.retryCount)
+                    {
+                        try
+                        {
+                            element.Click();
+                            isSuccess = true;
+                            break;  // 如果點擊成功則跳出迴圈
+                        }
+                        catch
+                        {
+                            // 如果發生錯誤則等待一段時間後重試
+                            manager.Log(LogLevel.WARNING, $"In step{this.step}, element \"{this.selectValue}\" click failed, retrying... ({currCount + 1}/{this.retryCount})");
+                            System.Threading.Thread.Sleep(this.retryInterval * 1000);
+                            currCount++;                            
+                        }
+                    }
+                    if (!isSuccess)
+                        throw new ElementWaitTimeoutException($"In step{this.step}, element \"{this.selectValue}\" click failed after {this.retryCount} retries.");
+                    else
+                        break;
                 case "SendKeys":
                     // 在該元素寫入字串
                     this.methodPara = this.VariableReplace(this.methodPara, para);
@@ -47,7 +71,7 @@ namespace ShiXunSeleniumTools
                     break;
                 default:
                     throw new InvalidMethodValueException($"In step{this.step}, method \"{this.method}\" is not defined");
-            }
+                }
 
             return;
         }
@@ -106,7 +130,20 @@ namespace ShiXunSeleniumTools
                             wait.Until(dvr =>
                             {
                                 var element = dvr.FindElement(selector);
-                                return (element.Displayed && element.Enabled) ? element : null;
+                                IJavaScriptExecutor js = (IJavaScriptExecutor)driver;
+
+                                return (
+                                element.Displayed   // 檢查元素有顯示
+                                && element.Enabled  // 檢查元素是啟用狀態
+                                && (bool)js.ExecuteScript(@"
+                                    var elem = arguments[0];
+                                    var rect = elem.getBoundingClientRect();
+                                    var x = rect.left + rect.width / 2;
+                                    var y = rect.top + rect.height / 2;
+                                    var elAtPoint = document.elementFromPoint(x, y);
+                                    return elem === elAtPoint || elem.contains(elAtPoint);
+                                ", element)         // 檢查元素在視窗中可點擊
+                                ) ? element : null;
                             });
                             break;
                         default:
@@ -701,7 +738,6 @@ namespace ShiXunSeleniumTools
                 return;
         }
     }
-
     internal class AddNewTabPage : StepCommand
     {
         public string url { get; set; } = "about:blank";  // 預設開啟一個空白頁面
@@ -712,12 +748,81 @@ namespace ShiXunSeleniumTools
     }
     internal class SwitchToTabPage : StepCommand
     {
-        public int index { get; set; }  // 預設切換到第一個tab頁
+        public int index { get; set; }
         public override void Execute(ShiXunSeleniumManager manager)
         {
             // 切換到指定的tab頁
             var tabs = manager.driver.WindowHandles;
             manager.driver.SwitchTo().Window(tabs[this.index]);
+        }
+    }
+    internal class CloseTabPage : StepCommand
+    {
+        public int index { get; set; }  // 預設關閉第一個tab頁
+        public override void Execute(ShiXunSeleniumManager manager)
+        {
+            // 關閉指定的tab頁
+            var tabs = manager.driver.WindowHandles;
+            if (index < tabs.Count)
+            {
+                manager.driver.SwitchTo().Window(tabs[index]);
+                manager.driver.Close();
+
+                // 關閉後自動切回第一個還活著的 tab
+                var remainingTabs = manager.driver.WindowHandles;
+                if (remainingTabs.Count > 0)
+                {
+                    manager.driver.SwitchTo().Window(remainingTabs[0]);
+                }
+            }
+            else
+            {
+                throw new ElementNotFoundException($"In step{this.step}, tab index {this.index} does not exist.");
+            }
+        }
+    }
+    internal class RaiseAlert : StepCommand
+    {
+        public string information { get; set; } = "";
+        public int alertTime { get; set; } = 5;  // 預設等5秒
+        public override void Execute(ShiXunSeleniumManager manager)
+        {
+            string replacedScript = this.VariableReplace(this.information, manager.variableDict);
+
+            // 顯示 alert（用戶需手動點擊確定）
+            var driver = manager.driver;
+            driver.ExecuteScript($"alert(\"{replacedScript}\");");
+
+            // 等待 alert 消失後再繼續，例如用 WebDriverWait
+            WebDriverWait wait = new WebDriverWait(driver, TimeSpan.FromSeconds(this.alertTime));
+            try
+            {
+                wait.Until(drv =>
+                {
+                    try
+                    {
+                        drv.SwitchTo().Alert();  // 如果 alert 還在，回傳 false
+                        return false;
+                    }
+                    catch (NoAlertPresentException)
+                    {
+                        return true;  // alert 已經被使用者關閉
+                    }
+                });
+            }
+            catch (WebDriverTimeoutException)
+            {
+                // 超過時間還沒關閉，就自己關掉
+                try
+                {
+                    var alert = driver.SwitchTo().Alert();
+                    alert.Accept();  // 幫使用者按下確定
+                }
+                catch
+                {
+                    // 已經被使用者關了，就不用處理
+                }
+            }
         }
     }
     #region FOR DEVELOP
@@ -763,6 +868,4 @@ namespace ShiXunSeleniumTools
         }
     }
     #endregion
-    // branch test
-
 }

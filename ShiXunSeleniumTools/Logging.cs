@@ -15,10 +15,13 @@ namespace ShiXunSeleniumTools
             if (String.IsNullOrEmpty(this.logFilePath))
                 return;
 
-            // 寫log            
-            string logEntry = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] [{logLevel}] {message}";
-            File.AppendAllText(this.logFilePath, logEntry + Environment.NewLine);
-            Console.WriteLine(logEntry);
+            // 寫log
+            if (loglevel >= logLevel)
+            {
+                string logEntry = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] [{loglevel}] {message}";
+                File.AppendAllText(this.logFilePath, logEntry + Environment.NewLine);
+                Console.WriteLine(logEntry);
+            }
         }
     }
 }

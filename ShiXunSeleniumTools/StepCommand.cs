@@ -24,13 +24,13 @@ namespace ShiXunSeleniumTools
         /// <param name="data">變數字串</param>
         /// <param name="para">BaseAction</param>
         /// <returns>變數替換完成的字串</returns>
-        internal string VariableReplace(string data, Dictionary<string, string> variableDict)
+        internal string VariableReplace(string data, ShiXunSeleniumManager manager)
         {
             // 用regular expression替換變數
             data = Regex.Replace(data, @"\$\{(.*?)\}", match =>
             {
                 string key = match.Groups[1].Value;
-                if (variableDict.TryGetValue(key, out var value))
+                if (manager.variableDict.TryGetValue(key, out var value))
                     return value ?? "";
                 else if (key == "clipboardContent")
                 {
@@ -45,7 +45,7 @@ namespace ShiXunSeleniumTools
                     staThread.SetApartmentState(ApartmentState.STA);
                     staThread.Start();
                     staThread.Join();
-                    Console.WriteLine($"Clipboard content: {text}");
+                    manager.clipboardRecord.Add(text);
                     return text;
                 }
                 else
@@ -103,7 +103,7 @@ namespace ShiXunSeleniumTools
         internal IWebElement SelectElement(ShiXunSeleniumManager manager)
         {
             // 替換變數
-            string replacedSelectValue = this.VariableReplace(this.selectValue, manager.variableDict);
+            string replacedSelectValue = this.VariableReplace(this.selectValue, manager);
 
             // 選取元素
             By selector = this.SelectorSetting(replacedSelectValue);

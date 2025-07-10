@@ -64,6 +64,6 @@ namespace ShiXunSeleniumTools
         WARNING,
         ERROR,
         CRITICAL,
-        NULL,
+        OFF = 99,
     }
 }

@@ -19,6 +19,7 @@ namespace ShiXunSeleniumTools
         public string jsonFilePath { get; set; } = "";  // Json檔案路徑
         public bool isDebug { get; set; } = true;  // 是否開啟debug模式
         public Dictionary<string, string> variableDict { get; set; } = new Dictionary<string, string>();  // 用來儲存變數的字典
+        public List<string> clipboardRecord { get; set; } = new List<string>();  // 用來儲存剪貼簿的歷史紀錄
         //public abstract Dictionary<ErrorType, int> errorCodeDict { get; set; }
 
         // Selenium物件
@@ -44,7 +45,7 @@ namespace ShiXunSeleniumTools
         internal ManualResetEvent PauseEvent = new ManualResetEvent(true);
 
         // log related
-        internal LogLevel logLevel = LogLevel.NULL;
+        internal LogLevel logLevel = LogLevel.OFF;
         internal string logFilePath = null;
 
         public ShiXunSeleniumManager(string jsonFilePath) 
@@ -275,12 +276,8 @@ namespace ShiXunSeleniumTools
             this.stepCount = 0;
             while (this.PC < this.StepsList.Count)
             {
-                this.StepsList[this.PC].Execute(this);
-
-                if (this.isDebug)
-                {
-                    this.Log(LogLevel.DEBUG, $"Finish step{this.PC+1}, action: {this.StepsList[this.PC].action}");
-                }
+                this.StepsList[this.PC].Execute(this);                
+                this.Log(LogLevel.DEBUG, $"Finish step{this.PC+1}, action: {this.StepsList[this.PC].action}");                
 
                 // 如果執行的步驟數量超過最大值則報錯
                 this.PC += 1;

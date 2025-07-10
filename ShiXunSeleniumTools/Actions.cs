@@ -66,7 +66,7 @@ namespace ShiXunSeleniumTools
                         break;
                 case "SendKeys":
                     // 在該元素寫入字串
-                    this.methodPara = this.VariableReplace(this.methodPara, para);
+                    this.methodPara = this.VariableReplace(this.methodPara, manager);
                     element.SendKeys(this.methodPara);
                     break;
                 default:
@@ -104,7 +104,7 @@ namespace ShiXunSeleniumTools
                 WebDriverWait wait = new WebDriverWait(driver, TimeSpan.FromSeconds(this.waitTime));
 
                 // 設定條件
-                string replacedSelectValue = this.VariableReplace(this.selectValue, para);
+                string replacedSelectValue = this.VariableReplace(this.selectValue, manager);
                 By selector = this.SelectorSetting(replacedSelectValue);
 
                 // 重寫WebDriverTimeoutException錯誤訊息
@@ -205,9 +205,9 @@ namespace ShiXunSeleniumTools
             Dictionary<string, string> para = manager.variableDict;
 
             // 替換變數的值
-            string replacedConditionPara = this.VariableReplace(this.conditionPara, para);
-            this.successMessage = this.VariableReplace(this.successMessage, para);
-            this.failMessage = this.VariableReplace(this.failMessage, para);
+            string replacedConditionPara = this.VariableReplace(this.conditionPara, manager);
+            this.successMessage = this.VariableReplace(this.successMessage, manager);
+            this.failMessage = this.VariableReplace(this.failMessage, manager);
 
             // 選取元素
             IWebElement element = this.SelectElement(manager);
@@ -265,7 +265,7 @@ namespace ShiXunSeleniumTools
                 throw new Exception($"In step{this.step}, url \"{this.url}\" is not defined.");
 
             // 處理字串，替代變數的位置
-            string replacedUrl = this.VariableReplace(this.url, para);
+            string replacedUrl = this.VariableReplace(this.url, manager);
 
             // 直接跳轉到指定的網址
             driver.Navigate().GoToUrl(replacedUrl);
@@ -302,7 +302,7 @@ namespace ShiXunSeleniumTools
             throwType: typeof(ElementNotSelectException), errorPrompt: $"In step{this.step}, FindSelect method needs to select <select> element");
 
             // 替換變數的值
-            this.methodPara = this.VariableReplace(this.methodPara, para);
+            this.methodPara = this.VariableReplace(this.methodPara, manager);
             switch (this.method)
             {
                 case "SelectByText":
@@ -490,7 +490,7 @@ namespace ShiXunSeleniumTools
 
             // 檢查條件
             string errorPromp;
-            string replacedConditionPara = this.VariableReplace(this.conditionPara, para);
+            string replacedConditionPara = this.VariableReplace(this.conditionPara, manager);
             bool isCondition = this.IsConditionSatisfy(out errorPromp, element, this.condition, replacedConditionPara);
 
             // 根據isCondition決定PC該去哪
@@ -649,7 +649,7 @@ namespace ShiXunSeleniumTools
 
             // 檢查條件
             string errorPromp;
-            string replacedConditionPara = this.VariableReplace(this.conditionPara, para);
+            string replacedConditionPara = this.VariableReplace(this.conditionPara, manager);
             bool isCondition = this.IsConditionSatisfy(out errorPromp, element, this.condition, replacedConditionPara);
 
             // 根據isCondition決定PC該去哪
@@ -787,7 +787,7 @@ namespace ShiXunSeleniumTools
         public int alertTime { get; set; } = 5;  // 預設等5秒
         public override void Execute(ShiXunSeleniumManager manager)
         {
-            string replacedScript = this.VariableReplace(this.information, manager.variableDict);
+            string replacedScript = this.VariableReplace(this.information, manager);
 
             // 顯示 alert（用戶需手動點擊確定）
             var driver = manager.driver;

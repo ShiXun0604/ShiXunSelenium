@@ -111,7 +111,7 @@ namespace ShiXunSeleniumTools
             if (!String.IsNullOrEmpty(this.seleniumSetting.userAgent))  
                 this.options.AddArgument(this.seleniumSetting.userAgent);
             // 設定瀏覽器大小
-            if (!String.IsNullOrEmpty(this.seleniumSetting.browserSize))  
+            if (!String.IsNullOrEmpty(this.seleniumSetting.browserSize))
                 this.options.AddArgument(this.seleniumSetting.browserSize);
             else
                 this.options.AddArgument("--start-maximized");

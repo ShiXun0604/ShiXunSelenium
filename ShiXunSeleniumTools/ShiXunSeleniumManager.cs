@@ -95,7 +95,7 @@ namespace ShiXunSeleniumTools
             this.options = new EdgeOptions();           
 
             // 無頭模式
-            if (this.seleniumSetting.isHeadless)          
+            if (this.seleniumSetting.isHeadless)
                 this.options.AddArgument("--headless=new");
             // 設定無痕模式
             if (this.seleniumSetting.isInPrivate)  
@@ -232,7 +232,6 @@ namespace ShiXunSeleniumTools
             this.logLevel = logLevel;
             this.logFilePath = logFilePath;
         }
-
         public async Task RunningAsync(string iniUrl, string executeActionName)
         { 
             await Task.Run(() => Running(iniUrl, executeActionName));
@@ -253,7 +252,7 @@ namespace ShiXunSeleniumTools
                 string errorMsg = $"Action '{executeActionName}' not found in action list.";
                 this.Log(LogLevel.CRITICAL, errorMsg);
                 throw new ScriptActionNotFoundException(errorMsg);
-            }       
+            }
                 
             if (string.IsNullOrEmpty(this.jsonFilePath))
             {
@@ -261,7 +260,7 @@ namespace ShiXunSeleniumTools
                 this.Log(LogLevel.CRITICAL, errorMsg);
                 throw new JsonFileNotFoundException(errorMsg);
             }
-                
+            
             // 隱藏命令提示字元視窗
             EdgeDriverService service = EdgeDriverService.CreateDefaultService();
             if(!this.isDebug)
